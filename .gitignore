@@ -1,0 +1,70 @@
+# System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User directories that shouldn't be in a project repo
+Applications/
+Desktop/
+Documents/
+Downloads/
+Library/
+Movies/
+Music/
+Pictures/
+Public/
+Sites/
+
+# Shell and system config files
+.bash_history
+.bash_profile
+.zsh_history
+.zsh_sessions/
+.zshrc*
+.viminfo
+.lesshst
+.wget-hsts
+.fzf.*
+.git-credentials
+.gitconfig
+
+# Development tools and caches
+.cache/
+.npm/
+.bundle/
+.rbenv/
+.ruby-version
+.local/
+.config/
+.vscode/
+.cursor*/
+.codeium/
+.codex/
+.claude.json*
+.claude/
+.mcp-auth/
+.windsurf/
+
+# Swift/iOS specific
+.swiftpm/
+.swiftformat
+.swiftlint.yml
+
+# Other development files
+.aspnet/
+.mint/
+.ollama/
+.openjfx/
+.husky/
+sync.log
+.CFUserTextEncoding
+.Trash/
+
+# IDE and editor files
+.editorconfig
+.github/
+.gitignore_global
