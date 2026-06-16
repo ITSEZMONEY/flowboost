@@ -39,7 +39,7 @@ For every open issue/PR, produce:
 | **URL / #** | Direct link. |
 | **What** | One line: what this issue/PR is. |
 | **Why it matters** | Impact / who it affects. |
-| **Author trust** | Org member · trusted bot (Dependabot/Renovate) · returning contributor · first-time / unknown. State the signal, not a vibe. |
+| **Author trust** | Per the auto-merge allowlist: `adityash8` = **trusted**; everyone else — other org members, returning/first-time/external contributors, forks, and bots (Dependabot/Renovate) — = **untrusted**. State the factual signal, not a vibe. |
 | **Type** | bug · feature · dependency · security · docs · chore |
 | **Fit** | good / mixed / poor + one-line reason (does it match the product?). |
 | **Risk** | low / medium / high + blast radius (what breaks if wrong). |
@@ -47,18 +47,20 @@ For every open issue/PR, produce:
 | **Blockers** | Missing repro, failing CI, needs decision, needs creds, merge conflict. |
 | **Next action** | The single concrete next step. |
 
-Trust informs **review depth, not correctness** — a trusted author still needs
-green CI and a sane diff; an unknown author with a perfect, tested patch can
-still land. Cite factual signals (account age, prior merged PRs, review history)
-rather than impressions.
+Trust here is an **explicit allowlist for auto-merge**, not a vibe: only
+`adityash8` is trusted. Untrusted authorship doesn't mean a bad patch — it means
+the item cannot auto-merge and routes to **needs-owner** (draft PR), even with
+green CI. The sole exception is a **bot dependency bump**, which may auto-merge
+if it meets every low-risk gate. Trust never substitutes for green CI and a sane
+diff; cite factual signals (account, prior merged PRs) when noting it.
 
 ## Risk heuristics (ITSEZMONEY / gate-slip context)
 
 Treat as **high risk** anything touching: auth/Passport/OAuth, payments/Stripe,
 `certificates/` or any key/secret, DB schema or migrations (`shared/schema.ts`),
 the parsing pipeline's output shape (`flightDataSchema`, the dual-AI parsers),
-or CI/release/`.env` config. Treat docs, copy, tests, lockfile/dep bumps, and
-formatting as **low risk**.
+or CI/release/`.env`/infra/deployment config. Treat docs, copy, tests,
+lockfile/dep bumps, and formatting as **low risk**.
 
 ## Buckets
 

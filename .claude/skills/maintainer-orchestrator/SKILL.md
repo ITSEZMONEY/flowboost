@@ -23,19 +23,28 @@ also works when invoked by hand in an interactive session.
 
 Each run is one pass. Do these in order, then stop.
 
-1. **Scope.** Determine the target repositories.
-   - If the Routine cloned multiple repos, act on all of them.
-   - If invoked in a single repo with a GitHub remote, act on that repo only.
+1. **Scope (owner-guarded).** Determine the target repositories.
+   - If the Routine cloned multiple repos, act on all of them; if invoked in a
+     single repo with a GitHub remote, act on that repo only.
+   - **Owner allowlist:** only operate on repos whose owner is `adityash8` or
+     `ITSEZMONEY`. Skip any cloned repo outside those owners entirely — no
+     triage, no PR, no merge — and record the skip in the **run summary**, never
+     in the skipped repo (you have no business writing to it).
    - Do **not** broaden beyond the cloned/selected repos unless the prompt says
      `all` / `org-wide`.
 2. **Triage.** Invoke the `github-project-triage` skill to build item cards for
    every open issue and PR (URL, what/why, author trust, fit, risk, proof/test
    state, blockers, next action) and sort them into three buckets:
    **autonomous · needs-owner · defer/close**.
-3. **Read the ledger.** Find the open issue titled `🤖 Maintainer Loop — Ledger`
-   in each repo (create it if missing). It is the durable memory across runs
-   since cloud sessions are ephemeral. Skip anything the ledger already marks
-   resolved or `wontfix`.
+3. **Read the ledger (single, race-safe).** Locate the repo's ledger by the
+   `maintainer-ledger` label (canonical), falling back to the exact title
+   `🤖 Maintainer Loop — Ledger`. **Exactly one must stay open.** If several are
+   open — two runs can race and each create one — keep the **lowest-numbered**
+   open ledger, close the rest as duplicates (`state_reason: duplicate` with
+   `duplicate_of` set to the survivor), and continue on the survivor. If none exists, create it, ensure the
+   `maintainer-ledger` label exists, and apply it. Never open a second ledger
+   when one is already open. The ledger is the durable memory across runs (cloud
+   sessions are ephemeral); skip anything it marks resolved or `wontfix`.
 4. **Act on autonomous items**, one at a time, verifying each before moving on
    (see *Autonomy policy* below). Stop touching an item the moment it stops
    meeting the bar and reclassify it as needs-owner.
@@ -64,11 +73,20 @@ ALL must hold:
   concern).
 - It touches **none** of: auth, payments/Stripe, `certificates/` or any
   key/secret, DB schema or migrations (`shared/schema.ts`, drizzle), CI/release
-  config, or anything in `.env*`.
-- Author is trusted (org member, or a bot like Dependabot/Renovate) **or** the
-  change was authored by this loop.
+  config, infra/deployment config, or anything in `.env*`.
+- Author is **trusted** per the allowlist below (or the change was authored by
+  this loop, which runs as `adityash8`) — **or** it is a bot dependency bump that
+  independently meets every other gate in this list.
 - No unresolved review thread requests changes.
 - Branch is up to date with base (or can be safely fast-forward updated).
+
+**Trusted author — explicit allowlist, not "CI is green":**
+- An item counts as from a trusted author **only** if the PR author is
+  `adityash8`. No one else qualifies — other org members, first-time/external
+  contributors, forks, and bot accounts (including Dependabot/Renovate) are
+  **not** trusted.
+- Bot **dependency** PRs may be auto-merged **only** when they also pass every
+  low-risk gate above; bot authorship alone never grants trust for anything else.
 
 For these: ensure CI is green, then **merge** (squash by default). If the loop
 authored the fix, open the PR first, let CI run, then merge once green.
@@ -110,10 +128,19 @@ status, job logs, merges, comments, labels); fall back to `gh` only if the
 connector is unavailable. Use `git` for local branch work. The `github-project-triage`
 skill provides the queue-discovery and scoring helpers.
 
+Close duplicate ledgers via the connector/REST API so `state_reason: duplicate`
+(+ `duplicate_of`) sticks — verified working. Note `gh issue close --reason`
+accepts only `completed`/`not_planned`, so if you must use `gh`, close with
+`not_planned` and a comment linking the survivor instead.
+
 ## The ledger
 
-One open issue per repo, titled exactly `🤖 Maintainer Loop — Ledger`, body
-rewritten each run. Suggested shape:
+One ledger issue per repo, marked with the `maintainer-ledger` label (the
+canonical identifier) and titled `🤖 Maintainer Loop — Ledger`. **Exactly one
+stays open** — if a run finds duplicates it keeps the lowest-numbered open one,
+closes the others as duplicates, and rewrites the survivor's body. Locate by
+label first (titles can be edited), then by title. Body rewritten each run.
+Suggested shape:
 
 ```
 ## Maintainer Loop — last run <UTC timestamp>
@@ -132,6 +159,11 @@ rewritten each run. Suggested shape:
 ```
 
 This is the only state that survives between runs — keep it accurate.
+
+> Seeing duplicate ledgers? That means two runs started concurrently — check the
+> routine's triggers for overlap (e.g. a manual **Run now** firing alongside a
+> scheduled run, or two schedule/event triggers). The dedup above heals it, but
+> overlapping triggers also burn double the runs.
 
 ## Reporting back to the owner
 

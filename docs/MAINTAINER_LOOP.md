@@ -64,39 +64,90 @@ the UI or with `/schedule` from a local CLI.
 
 ```
 Load the maintainer-orchestrator skill and run one maintenance pass over every
-repository cloned for this run. Follow the skill's loop and autonomy policy
-exactly: triage, read/update the "🤖 Maintainer Loop — Ledger" issue, AUTO-MERGE
-only low-risk items (green CI; deps/docs/tests/lockfile/formatting; small diff;
-no auth/payments/certs/schema/CI/secrets; trusted author), open DRAFT PRs and
-label `needs-owner` for everything else, defer/close stale or duplicate items,
-then summarize the run in the ledger. Do not make product, pricing, or
-architecture decisions. When in doubt, escalate instead of merging.
+repository cloned for this run, following the skill's loop and autonomy policy
+exactly: triage, read/update the "🤖 Maintainer Loop — Ledger" issue, act per
+the autonomy rules below, then summarize the run in the ledger.
+
+SCOPE GUARD
+- Only operate on repositories whose owner is `adityash8` or `ITSEZMONEY`.
+- If a cloned repo is outside those owners, skip it entirely (no triage, no
+  merge, no PR) and log the skip in the run output (not the skipped repo's ledger).
+
+TRUSTED AUTHOR — explicit allowlist, not "CI is green"
+- An item is from a "trusted author" ONLY if the PR author is one of:
+  `adityash8`. No one else qualifies — first-time/external contributors,
+  forks, and bot accounts (including dependabot, renovate) are NOT trusted.
+- Dependency PRs from bots may be AUTO-MERGED only when they also pass every
+  low-risk gate below; bot authorship alone never grants trust for anything else.
+
+AUTONOMY
+- AUTO-MERGE only when ALL hold: CI fully green; change is limited to
+  deps/docs/tests/lockfile/formatting; small diff; touches NONE of
+  auth/payments/certs/schema/CI/secrets/infra; and author is trusted (above)
+  OR it's a bot dependency bump meeting these same gates.
+- Everything else: open a DRAFT PR and apply the `needs-owner` label. Do not merge.
+- Defer or close stale or duplicate items.
+- Never make product, pricing, or architecture decisions. When in doubt,
+  escalate (draft + needs-owner) instead of merging.
 ```
 
 ## Autonomy policy (summary)
 
 Authorized level: **auto-merge low-risk**. Full rules in the orchestrator skill.
 
+- **Scope guard:** only repos owned by `adityash8` or `ITSEZMONEY`; skip and log
+  anything else.
+- **Trusted author = `adityash8` only.** Other org members, external/first-time
+  contributors, forks, and bots (Dependabot/Renovate) are **untrusted**.
 - **Auto-merge** (squash) only when *all* hold: CI green · change is
   deps/docs/tests/lockfile/formatting/safe-config · small bounded diff · touches
-  none of {auth, Stripe, `certificates/`, schema/migrations, CI/release, `.env*`,
-  secrets} · trusted author or loop-authored · no unresolved change requests.
+  none of {auth, Stripe, `certificates/`, schema/migrations, CI/release, infra,
+  `.env*`, secrets} · author trusted (or loop-authored) **or** a bot dependency
+  bump meeting all these gates · no unresolved change requests.
 - **Draft PR + `needs-owner`** for anything else — bugs with real logic, features,
   protected surfaces, big diffs, untrusted authors, uncertain CI, any ambiguity.
-- **Never** touch certs/keys/secrets, force-push protected branches, or close an
-  item under active discussion.
+- **Never** touch certs/keys/secrets, force-push protected branches, close an
+  item under active discussion, or make product/pricing/architecture decisions.
 
-## Fan out to all repos
+## Fan out / sync to all repos
 
-```bash
-# Copy the skills + this runbook into every ITSEZMONEY repo and open a PR each.
-scripts/fanout-maintainer-skills.sh                 # all org repos (needs gh + perms)
-scripts/fanout-maintainer-skills.sh repo-a repo-b   # just these
+The skill lives in each repo's `.claude/skills/`, so propagation = copy the
+**current `gate-slip` versions** over the top of every target repo. The target
+list is `scripts/maintainer-target-repos.txt` (the 27 other ITSEZMONEY repos +
+the adityash8 repos; `gate-slip` is the source, not a target).
+
+> ⚠️ **Overwrite, don't skip.** Every target already contains
+> `.claude/skills/maintainer-orchestrator/`, so any "skip if it exists" logic
+> propagates **nothing** — that's how repos get stuck on an old skill version.
+> Both paths below overwrite and only open a PR where content actually changed.
+
+### A. Distributor routine (cross-owner, no local `gh`)
+
+A one-off Routine with **every target repo *plus* `gate-slip` selected** (it
+copies *from* the gate-slip checkout). Prompt:
+
+```
+gate-slip holds the canonical maintainer-loop files at
+.claude/skills/maintainer-orchestrator/, .claude/skills/github-project-triage/,
+and docs/MAINTAINER_LOOP.md. For every OTHER cloned repo, copy those three paths
+from the gate-slip checkout OVER the top of whatever is there. If nothing changed
+(already identical), skip that repo. Otherwise create/update branch
+chore/maintainer-loop, commit "chore: sync maintainer loop skills", and open or
+update a DRAFT PR titled "Sync maintainer loop skills". Do not modify gate-slip.
+Report each repo as created / updated / unchanged, with the PR URL.
 ```
 
-The script is idempotent — re-running it updates the skills on the branch and
-refreshes the PR. After it runs, add each repo to your maintainer routine (or
-give each its own routine).
+### B. Shell script (`gh`, cross-owner)
+
+```bash
+scripts/fanout-maintainer-skills.sh                    # all repos in scripts/maintainer-target-repos.txt
+scripts/fanout-maintainer-skills.sh ITSEZMONEY/serum adityash8/llmx   # explicit owner/repo
+```
+
+It copies over the top and opens a PR only where content changed (idempotent).
+
+After either path, **add every repo to the maintainer routine's repo list** so
+the loop actually runs against them.
 
 ## Alternative: GitHub Actions (true 5-min, BYO key)
 
