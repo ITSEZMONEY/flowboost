@@ -1,0 +1,4 @@
+## 2026-09-26 - OAuth CSRF Protection
+**Vulnerability:** Found a CSRF vulnerability in Webflow OAuth authentication flow. The OAuth 2.0 flow was lacking a `state` parameter check, meaning attackers could link their own accounts to a user's session without their permission.
+**Learning:** Adding `state` is not enough if you do not verify it. The `state` parameter must be sent via the authorization URL and persisted locally (e.g. via an HttpOnly cookie). Then, upon receiving the callback, the `state` parameter in the URL must be matched against the locally stored value.
+**Prevention:** Whenever implementing an OAuth flow, always generate a secure random string for the `state` parameter, save it securely (HttpOnly cookie), and enforce that it matches the `state` parameter returned by the OAuth provider upon callback.

@@ -74,7 +74,7 @@ export class WebflowAPI {
   }
 }
 
-export async function getWebflowAuthUrl(): Promise<string> {
+export async function getWebflowAuthUrl(state: string): Promise<string> {
   const clientId = process.env.WEBFLOW_CLIENT_ID!
   const redirectUri = process.env.WEBFLOW_REDIRECT_URI!
 
@@ -83,7 +83,7 @@ export async function getWebflowAuthUrl(): Promise<string> {
     client_id: clientId,
     redirect_uri: redirectUri,
     scope: 'sites:read sites:write pages:read pages:write',
-    state: crypto.randomUUID(), // Add CSRF protection
+    state: state, // CSRF protection
   })
 
   return `https://webflow.com/oauth/authorize?${params}`

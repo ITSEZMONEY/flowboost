@@ -5,7 +5,10 @@ import { supabase } from '@/lib/supabase'
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
+  const state = searchParams.get('state')
   const error = searchParams.get('error')
+
+  const storedState = request.cookies.get('webflow_oauth_state')?.value
 
   if (error) {
     return NextResponse.redirect(
@@ -16,6 +19,12 @@ export async function GET(request: NextRequest) {
   if (!code) {
     return NextResponse.redirect(
       new URL(`/dashboard?error=${encodeURIComponent('No authorization code received')}`, request.url)
+    )
+  }
+
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(
+      new URL(`/dashboard?error=${encodeURIComponent('Invalid state parameter (CSRF protection)')}`, request.url)
     )
   }
 
