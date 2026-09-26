@@ -28,16 +28,26 @@ export default function EmbedWidget({ initialRole = "" }: { initialRole?: string
   const [copied, setCopied] = useState(false);
 
   // Auto-resize the iframe height
+  // ⚡ Bolt Optimization: Replaced setInterval polling with ResizeObserver to prevent continuous layout thrashing
   useEffect(() => {
-    const resize = () => {
+    const notifyHeight = () => {
       parent.postMessage(
         { type: "JB_IFRAME_HEIGHT", height: document.body.scrollHeight },
         "*"
       );
     };
-    resize();
-    const id = setInterval(resize, 400);
-    return () => clearInterval(id);
+
+    // Initial height notification
+    notifyHeight();
+
+    // Use ResizeObserver instead of polling for performance
+    const observer = new ResizeObserver(() => {
+      notifyHeight();
+    });
+
+    observer.observe(document.body);
+
+    return () => observer.disconnect();
   }, []);
 
   const ctaHref = useMemo(() => buildJuiceboxCta(role || "Recruiter"), [role]);
