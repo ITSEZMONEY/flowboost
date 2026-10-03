@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(authUrl)
     response.cookies.set('webflow_oauth_state', state, {
       httpOnly: true,
+      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 60 * 10, // 10 minutes
